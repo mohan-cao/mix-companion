@@ -130,7 +130,7 @@ class App extends React.Component {
 
   render() {
     const { number, isMinor, token, results, selectedGenre, availableGenres } = this.state;
-    if (!token) return <button onClick={this.getToken}>Login to Spotify to use this app</button>
+    if (!token) return <button onClick={() => this.getToken()}>Login to Spotify to use this app</button>
     return (
       <div className="App">
         <h1>{formatKey(number, isMinor)}</h1>
