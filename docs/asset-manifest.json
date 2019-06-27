@@ -1,14 +1,14 @@
 {
   "files": {
     "main.css": "/mix-companion/static/css/main.2cce8147.chunk.css",
-    "main.js": "/mix-companion/static/js/main.f44aecdf.chunk.js",
-    "main.js.map": "/mix-companion/static/js/main.f44aecdf.chunk.js.map",
+    "main.js": "/mix-companion/static/js/main.54853d64.chunk.js",
+    "main.js.map": "/mix-companion/static/js/main.54853d64.chunk.js.map",
     "runtime~main.js": "/mix-companion/static/js/runtime~main.5d2f421f.js",
     "runtime~main.js.map": "/mix-companion/static/js/runtime~main.5d2f421f.js.map",
     "static/js/2.3cdbdd3e.chunk.js": "/mix-companion/static/js/2.3cdbdd3e.chunk.js",
     "static/js/2.3cdbdd3e.chunk.js.map": "/mix-companion/static/js/2.3cdbdd3e.chunk.js.map",
     "index.html": "/mix-companion/index.html",
-    "precache-manifest.31cbf328f8cd8cf6f1d227433e0f3b7a.js": "/mix-companion/precache-manifest.31cbf328f8cd8cf6f1d227433e0f3b7a.js",
+    "precache-manifest.c1578a52b4556c1d5675b8329708e3db.js": "/mix-companion/precache-manifest.c1578a52b4556c1d5675b8329708e3db.js",
     "service-worker.js": "/mix-companion/service-worker.js",
     "static/css/main.2cce8147.chunk.css.map": "/mix-companion/static/css/main.2cce8147.chunk.css.map"
   }
