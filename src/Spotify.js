@@ -30,9 +30,10 @@ export function getTokenInNewWindow(client_id, redirect_url, scopes) {
   return new Promise((resolve, reject) => {
     let popup = window.open(callable_endpoint, 'Login with Spotify', 'width=800,height=600')
     window.spotifyCallback = (token, expires, state) => {
+      state = parseInt(state)
       popup.close()
       if (state !== nonce) {
-        reject("Nonce is invalid")
+        reject(`Nonce is invalid, expected: ${nonce} but got ${state}`)
       } else {
         resolve({ token: token, expires: expires })
       }
