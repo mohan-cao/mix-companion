@@ -24,6 +24,15 @@ export const spanJoiner = (a, b) => {
   return a
 }
 
+const rotateNumber = (a, b) => (prev, amount) => {
+  amount = prev + amount;
+  amount %= (b - a + 1);
+  if (amount < a) amount += b
+  return amount
+}
+
+const rotate12 = rotateNumber(1, 12)
+
 class App extends React.Component {
   constructor() {
     super()
@@ -99,7 +108,7 @@ class App extends React.Component {
     getRecommendationsBasedOnAttributes(token, {
       genres: (type === 'Genre' ? query : null),
       bpm: selectedBpm,
-      key: formatKey(number, isMinor),
+      key: [formatKey(number, isMinor), formatKey(rotate12(number, -1), isMinor), formatKey(rotate12(number, 1), isMinor), formatKey(number, !isMinor)],
       songs: (type === 'Track' ? query.split(',').map(x => x.trim()) : null),
       artist: (type === 'Artist' ? query.split(',').map(x => x.trim()) : null),
     })
@@ -152,11 +161,17 @@ class App extends React.Component {
             </div>
           </div>
           <div style={{ flex: '0 1 auto' }}>
-            <BPMSlider onLongPress={() => this.handleBpmChange({}, [50, 250])} selectedBpm={selectedBpm} onBpmChange={(e, newValue) => this.handleBpmChange(e, newValue)} height={75} min={0} max={300} />
+            <BPMSlider onLongPress={() => ('ontouchstart' in document.documentElement) && this.handleBpmChange({}, [50, 250])} selectedBpm={selectedBpm} onBpmChange={(e, newValue) => this.handleBpmChange(e, newValue)} height={75} min={0} max={300} />
           </div>
         </div>
         <div style={{ marginTop: 5 }}>
-          Getting recommendations for {type.toLowerCase()}s <span style={{ color: 'red' }}>{query ? ("like " + (Array.isArray(query)?query.join(', ') : query)) : ''}</span>
+          Getting recommendations for <span style={{ }}>{type.toLowerCase()}s</span>
+          <span style={{ color: 'red' }}>
+            {query ? (" like " + (Array.isArray(query) ? query.join(', ') : query)) : ''}
+            {(Array.isArray(selectedBpm) && selectedBpm.length === 2 ? ` and only tracks that are ${selectedBpm[0]} to ${selectedBpm[1]} bpm` :
+             (typeof selectedBpm === 'number' ? ` for tracks with ${selectedBpm} (± 10) bpm ` : '')
+            )}
+          </span>
         </div>
         <div style={{ padding: '20px 0', display: 'flex', justifyContent: 'center' }}>
           <ResizableFlexbox childrenWidth={219}>

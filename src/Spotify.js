@@ -32,6 +32,17 @@ class FetchException extends Error {
   }
 }
 
+async function fetchJSONWithOAuthToken(endpoint, token) {
+  const resp = await fetch(endpoint, {
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    }
+  })
+  return resp;
+}
+
 export function getTokenInNewWindow(client_id, redirect_url, scopes) {
   const endpoint = "https://accounts.spotify.com/authorize"
   let nonce = secureMathRandom();
@@ -57,40 +68,24 @@ export function getTokenInNewWindow(client_id, redirect_url, scopes) {
 
 export async function getGenres(token) {
   const endpoint = "https://api.spotify.com/v1/recommendations/available-genre-seeds"
-  const resp = await fetch(endpoint, {
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + token
-    }
-  })
+  const resp = await fetchJSONWithOAuthToken(endpoint, token)
   if (resp.status !== 200) return Promise.reject()
-  return resp.json()
+  return await resp.json()
 }
 
 export async function searchSpotify(token, searchTerm, type) {
   if (!searchTerm) return Promise.reject("No search terms provided")
   const endpoint = "https://api.spotify.com/v1/search?q=" + searchTerm + "&type=" + type
   console.log(endpoint)
-  const resp = await fetch(endpoint, {
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + token
-    }
-  })
+  const resp = await fetchJSONWithOAuthToken(endpoint, token)
   const json = await resp.json()
   handleError(resp, json)
   return json
 }
 
-export async function getRecommendationsBasedOnAttributes(token, { genres, bpm, key, songs, artist }) {
-  // artist: kanye west, song: dark fantasy
-  function replaceSongArtists(term) {
-    return term.replace(/\s*\((.*)\)\s*/g, (m, p1) => ` artist:"${p1}" `)
-  }
-
-  function extractArtistToEndpoint(arr) {
+export async function getRecommendationsBasedOnAttributes(token, { genres, bpm=120, key, songs, artist }) {
+  const replaceSongArtists = (term) => term.replace(/\s*\((.*)\)\s*/g, (m, p1) => ` artist:"${p1}" `)
+  const extractArtistToEndpoint = (arr) => {
     if(!Array.isArray(arr)) throw new FetchException(400)
     const artistsIds = arr.map(obj => {
       if (!obj.hasOwnProperty("artists") || !obj["artists"]["items"].length) return "";
@@ -99,7 +94,7 @@ export async function getRecommendationsBasedOnAttributes(token, { genres, bpm, 
     if (!artistsIds) throw new FetchException("No artists found using your search terms")
     return "&seed_artists=" + artistsIds
   }
-  function extractTrackToEndpoint(arr) {
+  const extractTrackToEndpoint = (arr) => {
     if(!Array.isArray(arr)) throw new FetchException(400)
     const trackIds = arr.map(obj => {
       if (!obj.hasOwnProperty("tracks") || !obj["tracks"]["items"].length) return "";
@@ -110,10 +105,9 @@ export async function getRecommendationsBasedOnAttributes(token, { genres, bpm, 
   }
 
   const endpoint = "https://api.spotify.com/v1/recommendations"
-  let callable_endpoint = endpoint + "?min_key=" + CamelotKeyToIntegerAndMode[key][0] + "&max_key=" + CamelotKeyToIntegerAndMode[key][0]
-  callable_endpoint += "&min_mode=" + CamelotKeyToIntegerAndMode[key][1] + "&max_mode=" + CamelotKeyToIntegerAndMode[key][1]
-  if (Array.isArray(bpm) && bpm.length === 2) callable_endpoint += "&min_tempo=" + bpm[0] + "&max_tempo=" + bpm[1]
-  else callable_endpoint += "&min_tempo=" + (bpm - 10) + "&max_tempo=" + (bpm + 10)
+  let callable_endpoint = endpoint + '?'
+  if (Array.isArray(bpm) && bpm.length === 2) callable_endpoint += "min_tempo=" + bpm[0] + "&max_tempo=" + bpm[1]
+  else callable_endpoint += "min_tempo=" + (bpm - 10) + "&max_tempo=" + (bpm + 10)
   
   try {
     if (songs) {
@@ -132,16 +126,21 @@ export async function getRecommendationsBasedOnAttributes(token, { genres, bpm, 
     else return Promise.reject(status)
   }
   
+  let mapped_responses = (await Promise.all((!key ? [] : (Array.isArray(key) ? key : [key]))
+  .map(async k => {
+    let modifiedEndpoint = callable_endpoint + "&min_key=" + CamelotKeyToIntegerAndMode[k][0] + "&max_key=" + CamelotKeyToIntegerAndMode[k][0]
+    modifiedEndpoint += "&min_mode=" + CamelotKeyToIntegerAndMode[k][1] + "&max_mode=" + CamelotKeyToIntegerAndMode[k][1]
+    console.log(modifiedEndpoint)
+    const resp = await fetchJSONWithOAuthToken(modifiedEndpoint, token);
+    const json = await resp.json();
+    handleError(resp, json);
+    return { key: k, value: json };
+  })))
+  .reduce((a, b) => {
+    if (a.hasOwnProperty(b.key)) return a;
+    a[b.key] = b.value
+    return a;
+  }, {});
 
-  console.log(callable_endpoint)
-  const resp = await fetch(callable_endpoint, {
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + token
-    }
-  })
-  const json = await resp.json()
-  handleError(resp, json)
-  return json
+  return mapped_responses
 }
