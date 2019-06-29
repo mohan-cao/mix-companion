@@ -2,6 +2,10 @@ import React from 'react';
 import './App.css';
 import QueryString from 'query-string'
 import { getTokenInNewWindow, getRecommendationsBasedOnAttributes, getGenres } from './Spotify';
+import GenreSelector from './GenreSelector';
+import KeySelector from './KeySelector';
+import { Button, InputLabel } from '@material-ui/core';
+import { Slider } from '@material-ui/lab';
 
 const formatKey = (number, isMinor) => number + (isMinor ? "B" : "A")
 const stringToKey = (str) => [ parseInt(str.slice(0, -1)), (str.slice(-1).toLowerCase() === "b" ? true : false)]
@@ -10,39 +14,9 @@ const DEFAULT_KEY_NUM = 1
 const DEFAULT_KEY_IS_MINOR = false
 const website = "https://www.mohancao.me/mix-companion"
 
-const camelotMinorKey = [
-  "1A",    
-  "2A",    
-  "3A",    
-  "4A",    
-  "5A",    
-  "6A",    
-  "7A",    
-  "8A",    
-  "9A",    
-  "10A",   
-  "11A",   
-  "12A",
-]
-
-const camelotMajorKey = [
-  "1B", 
-  "2B", 
-  "3B", 
-  "4B", 
-  "5B", 
-  "6B", 
-  "7B", 
-  "8B", 
-  "9B", 
-  "10B",
-  "11B",
-  "12B",
-]
-
 const spanJoiner = (a, b) => {
   if (a.length === 0) a.push(b)
-  else a.push(', ', b)
+  else a.push(<br key={a.length+1}/>, b)
   return a
 }
 
@@ -54,10 +28,10 @@ class App extends React.Component {
       isMinor: DEFAULT_KEY_IS_MINOR,
       token: window.localStorage.getItem("token"),
       expires: window.localStorage.getItem("expires"),
-      bpmSearch: DEFAULT_TEMPO,
       availableGenres: ['country', 'classical', 'rock', 'pop', 'blues', 'r-n-b'],
-      selectedGenre: 'country',
+      selectedGenre: ['country'],
       results: 'Results go here',
+      selectedBpm: DEFAULT_TEMPO
     }
   }
 
@@ -109,8 +83,8 @@ class App extends React.Component {
   }
 
   startSearch() {
-    const { token, selectedGenre, bpmSearch, number, isMinor } = this.state;
-    getRecommendationsBasedOnAttributes(token, { genres: selectedGenre, bpm: bpmSearch, key: formatKey(number, isMinor)})
+    const { token, selectedGenre, selectedBpm, number, isMinor } = this.state;
+    getRecommendationsBasedOnAttributes(token, { genres: selectedGenre, bpm: selectedBpm, key: formatKey(number, isMinor)})
     .then(x => this.setState({ results: x }))
     .catch(() => {
       // token expired
@@ -120,44 +94,55 @@ class App extends React.Component {
 
   mapResults(results) {
     if (!results || !results.tracks || results.tracks.length < 1) return
-    return results.tracks.map((track, i) => (
-      <div key={i}>
-        <h1>{track.artists.map((art, i) => <a key={i} href={art.external_urls.spotify}>{art.name}</a>).reduce(spanJoiner, [])}</h1>
-        <h2><a href={track.external_urls.spotify}>{track.name}</a></h2>
+    console.log(results.tracks.sort((a, b) => b.popularity - a.popularity))
+    return results.tracks.sort((a, b) => b.popularity - a.popularity).map((track) => (
+      <div key={track.id} style={{ backgroundImage: `url(${track.album ? track.album.images[0].url: ''})`, margin: 2, backgroundColor: '#999', border: '3px solid #aaa', boxSizing: 'content-box' }}>
+        <div style={{ margin: 5, border: '3px solid #aaa', backgroundColor: 'rgba(0, 0, 0, 0.8)', borderRadius: '50%', height: 200, width: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <h1 className="artist-name">{track.artists.map((art, i) => <a className="artist-name" key={i} href={art.external_urls.spotify}>{art.name}</a>).reduce(spanJoiner, [])}</h1>
+          <h2 className="song-name"><a className="song-name" href={track.external_urls.spotify}>{track.name}</a></h2>
+        </div>
       </div>
     ))
   }
 
+  handleBpmChange(e, newValue) {
+    if (e.shiftKey && typeof this.state.selectedBpm === 'number') newValue = [this.state.selectedBpm, newValue] 
+    else if (Array.isArray(newValue) && newValue[0] === newValue[1]) newValue = newValue[0]
+    console.log(newValue)
+    this.setState({ selectedBpm: newValue })
+  }
+
   render() {
-    const { number, isMinor, token, results, selectedGenre, availableGenres } = this.state;
-    if (!token) return <button onClick={() => this.getToken()}>Login to Spotify to use this app</button>
+    const { number, isMinor, token, results, selectedGenre, availableGenres, selectedBpm } = this.state;
+    if (!token) return <div className="App"><Button onClick={() => this.getToken()}>Login to Spotify to use this app</Button></div>
     return (
-      <div className="App">
-        <h1>{formatKey(number, isMinor)}</h1>
-        <div>
-          <label htmlFor="key">Enter key: </label>
-          <select name="key" value={formatKey(number, isMinor)} onChange={(e) => this.setKey(e)}>
-            <optgroup label="Minor keys">{camelotMinorKey.map((x) => <option key={x} value={x}>{x}</option>)}</optgroup>
-            <optgroup label="Major keys">{camelotMajorKey.map((x) => <option key={x} value={x}>{x}</option>)}</optgroup>
-          </select>
+      <div className="App" style={{ padding: 5 }}>
+        <div style={{ backgroundColor: '#eee', padding: 15, display: 'inline-flex', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div>
+              <KeySelector style={{ flexDirection: 'row', alignItems: 'center' }} camelotKey={formatKey(number, isMinor)} onChange={(e) => this.setKey(e)} />
+              <GenreSelector style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 5 }} selectedGenre={selectedGenre} availableGenres={availableGenres} onChange={(e) => this.setState(e)} onRefreshClicked={() => this.getGenres()} />
+            </div>
+            <div style={{ marginTop: 5 }}>
+              <Button style={{ width: '100%' }} color="primary" variant="contained" onClick={() => this.startSearch()}>Start search</Button>
+            </div>
+          </div>
+          <div>
+            <InputLabel style={{ width: '100%' }} shrink htmlFor="bpm">BPM</InputLabel>
+            <div style={{ display: 'flex', height: 75 }}>
+              <Slider
+                name="bpm"
+                orientation="vertical"
+                min={0}
+                max={300}
+                value={selectedBpm}
+                onChange={(e, newValue) => this.handleBpmChange(e, newValue)}
+                valueLabelDisplay="auto"
+              />
+            </div>
+          </div>
         </div>
-        <div>
-          <label htmlFor="bpm">Enter BPM: </label><input type="number" defaultValue={DEFAULT_TEMPO} name="bpm" onChange={(e) => this.setState({ bpmSearch: parseFloat(e.target.value ? e.target.value : DEFAULT_TEMPO) })} />
-        </div>
-        <div>
-          <select value={selectedGenre} onChange={(e) => this.setState({ selectedGenre: e.target.value })}>
-            {(availableGenres && availableGenres.length > 0 ?
-              availableGenres.map((x) => <option key={x} value={x}>{x}</option>)
-              :
-              <option>No genres available</option>
-            )}
-          </select>
-          <button onClick={() => this.getGenres()}>Fetch all genres</button>
-        </div>
-        <div>
-          <button onClick={() => this.startSearch()}>Start search</button>
-        </div>
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
           {this.mapResults(results)}
         </div>
       </div>

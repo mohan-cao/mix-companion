@@ -59,7 +59,8 @@ export async function getRecommendationsBasedOnAttributes(token, { genres, bpm, 
   let callable_endpoint = endpoint + "?seed_genres=" + (Array.isArray(genres) ? genres.join(',') : genres)
   callable_endpoint += "&min_key=" + CamelotKeyToIntegerAndMode[key][0] + "&max_key=" + CamelotKeyToIntegerAndMode[key][0]
   callable_endpoint += "&min_mode=" + CamelotKeyToIntegerAndMode[key][1] + "&max_mode=" + CamelotKeyToIntegerAndMode[key][1]
-  callable_endpoint += "&target_tempo=" + bpm
+  if (Array.isArray(bpm) && bpm.length === 2) callable_endpoint += "&min_tempo=" + bpm[0] + "&max_tempo=" + bpm[1]
+  else callable_endpoint += "&target_tempo=" + bpm
   console.log(callable_endpoint)
   const resp = await fetch(callable_endpoint, {
     headers: {
