@@ -1,5 +1,6 @@
 .App {
   text-align: center;
+  overflow-x: hidden;
 }
 
 a.artist-name {
@@ -14,10 +15,14 @@ a.song-name {
 
 h1.artist-name {
   font-size: 1rem;
+  overflow-wrap: break-word;
 }
 
 h2.song-name {
   font-size: 0.8rem;
+  width: 200px;
+  padding: 10px;
+  overflow-wrap: break-word;
 }
 
 @keyframes App-logo-spin {

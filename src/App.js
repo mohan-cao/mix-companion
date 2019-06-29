@@ -4,8 +4,12 @@ import QueryString from 'query-string'
 import { getTokenInNewWindow, getRecommendationsBasedOnAttributes, getGenres } from './Spotify';
 import GenreSelector from './GenreSelector';
 import KeySelector from './KeySelector';
-import { Button, InputLabel } from '@material-ui/core';
-import { Slider } from '@material-ui/lab';
+import { Button } from '@material-ui/core';
+import BPMSlider from './BPMSlider';
+import SearchBar from './SearchBar';
+import ResizableFlexbox from './ResizableFlexbox';
+import Results from './Results';
+import ErrorSnackbar from './ErrorSnackbar';
 
 const formatKey = (number, isMinor) => number + (isMinor ? "B" : "A")
 const stringToKey = (str) => [ parseInt(str.slice(0, -1)), (str.slice(-1).toLowerCase() === "b" ? true : false)]
@@ -14,7 +18,7 @@ const DEFAULT_KEY_NUM = 1
 const DEFAULT_KEY_IS_MINOR = false
 const website = "https://www.mohancao.me/mix-companion"
 
-const spanJoiner = (a, b) => {
+export const spanJoiner = (a, b) => {
   if (a.length === 0) a.push(b)
   else a.push(<br key={a.length+1}/>, b)
   return a
@@ -29,9 +33,11 @@ class App extends React.Component {
       token: window.localStorage.getItem("token"),
       expires: window.localStorage.getItem("expires"),
       availableGenres: ['country', 'classical', 'rock', 'pop', 'blues', 'r-n-b'],
-      selectedGenre: ['country'],
       results: 'Results go here',
-      selectedBpm: DEFAULT_TEMPO
+      selectedBpm: DEFAULT_TEMPO,
+
+      type: "Track",
+      query: "",
     }
   }
 
@@ -47,7 +53,7 @@ class App extends React.Component {
         let expiry = (new Date().getTime() + (parseInt(expires_in) * 1000 * 0.9))
         this.setNewToken(access_token, expiry) // always refresh a little earlier than needed (0.9*actual expiry time)
       }
-      window.location.hash = ""
+      window.history.replaceState(null, null, ' ');
     }
     /// block end
   }
@@ -76,74 +82,86 @@ class App extends React.Component {
   getGenres() {
     getGenres(this.state.token)
     .then(x => this.setState({ availableGenres: x.genres }))
-    .catch(() => {
-      // token failed
-      this.getToken();
+    .catch((code) => {
+      // token expired
+      if (code === 401) this.getToken();
+      else this.setState({ error: ''+code });
     })
   }
 
   startSearch() {
-    const { token, selectedGenre, selectedBpm, number, isMinor } = this.state;
-    getRecommendationsBasedOnAttributes(token, { genres: selectedGenre, bpm: selectedBpm, key: formatKey(number, isMinor)})
-    .then(x => this.setState({ results: x }))
-    .catch(() => {
-      // token expired
-      this.getToken()
-    })
-  }
+    const { token, selectedBpm, number, isMinor, type, query } = this.state;
 
-  mapResults(results) {
-    if (!results || !results.tracks || results.tracks.length < 1) return
-    console.log(results.tracks.sort((a, b) => b.popularity - a.popularity))
-    return results.tracks.sort((a, b) => b.popularity - a.popularity).map((track) => (
-      <div key={track.id} style={{ backgroundImage: `url(${track.album ? track.album.images[0].url: ''})`, margin: 2, backgroundColor: '#999', border: '3px solid #aaa', boxSizing: 'content-box' }}>
-        <div style={{ margin: 5, border: '3px solid #aaa', backgroundColor: 'rgba(0, 0, 0, 0.8)', borderRadius: '50%', height: 200, width: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <h1 className="artist-name">{track.artists.map((art, i) => <a className="artist-name" key={i} href={art.external_urls.spotify}>{art.name}</a>).reduce(spanJoiner, [])}</h1>
-          <h2 className="song-name"><a className="song-name" href={track.external_urls.spotify}>{track.name}</a></h2>
-        </div>
-      </div>
-    ))
+    let errors = ''
+    if (type === "Genre" && query && query.length && query.length > 5) errors += "Sorry, can't have more than 5 genres. "
+    if (errors) { this.setState({ error: errors }); return; }
+
+    getRecommendationsBasedOnAttributes(token, {
+      genres: (type === 'Genre' ? query : null),
+      bpm: selectedBpm,
+      key: formatKey(number, isMinor),
+      songs: (type === 'Track' ? query.split(',').map(x => x.trim()) : null),
+      artist: (type === 'Artist' ? query.split(',').map(x => x.trim()) : null),
+    })
+    .then(x => this.setState({ results: x }))
+    .catch((code) => {
+      // token expired
+      if (code === 401) this.getToken()
+      else this.setState({ error: ''+code })
+    })
   }
 
   handleBpmChange(e, newValue) {
     if (e.shiftKey && typeof this.state.selectedBpm === 'number') newValue = [this.state.selectedBpm, newValue] 
     else if (Array.isArray(newValue) && newValue[0] === newValue[1]) newValue = newValue[0]
-    console.log(newValue)
     this.setState({ selectedBpm: newValue })
   }
 
+  setSearchTerms({ query, type }) {
+    if (type) {
+      this.setState({ type, query: '' })
+    } else {
+      this.setState({ query })
+    }
+  }
+
   render() {
-    const { number, isMinor, token, results, selectedGenre, availableGenres, selectedBpm } = this.state;
-    if (!token) return <div className="App"><Button onClick={() => this.getToken()}>Login to Spotify to use this app</Button></div>
+    const { number, isMinor, token, results, availableGenres, selectedBpm, type, query, error } = this.state;
+    if (!token) return <div className="App" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Button onClick={() => this.getToken()}>Login to Spotify to use this app</Button></div>
     return (
-      <div className="App" style={{ padding: 5 }}>
-        <div style={{ backgroundColor: '#eee', padding: 15, display: 'inline-flex', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div>
-              <KeySelector style={{ flexDirection: 'row', alignItems: 'center' }} camelotKey={formatKey(number, isMinor)} onChange={(e) => this.setKey(e)} />
-              <GenreSelector style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 5 }} selectedGenre={selectedGenre} availableGenres={availableGenres} onChange={(e) => this.setState(e)} onRefreshClicked={() => this.getGenres()} />
+      <div className="App">
+        <ErrorSnackbar open={!!error} error={error} onClose={() => this.setState({ error: null })} />
+        <div style={{ backgroundColor: '#eee', padding: 15, boxSizing: 'border-box', display: 'inline-flex', width: '100vw', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', width: '70%', flex: '1 1 auto', overflow: 'auto' }}>
+            <div style={{ display: 'flex' }}>
+              <KeySelector style={{ flexDirection: 'row', flex: '0 0 auto', alignItems: 'center' }} camelotKey={formatKey(number, isMinor)} onChange={(e) => this.setKey(e)} />
+              <SearchBar style={{ flexDirection: 'row', flex: '1 1 150px', minWidth: '150px', alignItems: 'center', marginLeft: 5 }}
+                         type={type}
+                         value={query}
+                         onChange={(e) => this.setSearchTerms(e)}
+                         GenreSelector={<GenreSelector
+                                         style={{ flexDirection: 'row', flex: '1 1 auto', alignItems: 'center', marginLeft: 5 }}
+                                         selectedGenre={type === 'Genre' && Array.isArray(query) ? query : []} availableGenres={availableGenres}
+                                         onChange={(val) => (val.length <= 5) && this.setState({ query: val })}
+                                         onRefreshClicked={() => this.getGenres()}
+                                        />}
+              />
             </div>
             <div style={{ marginTop: 5 }}>
               <Button style={{ width: '100%' }} color="primary" variant="contained" onClick={() => this.startSearch()}>Start search</Button>
             </div>
           </div>
-          <div>
-            <InputLabel style={{ width: '100%' }} shrink htmlFor="bpm">BPM</InputLabel>
-            <div style={{ display: 'flex', height: 75 }}>
-              <Slider
-                name="bpm"
-                orientation="vertical"
-                min={0}
-                max={300}
-                value={selectedBpm}
-                onChange={(e, newValue) => this.handleBpmChange(e, newValue)}
-                valueLabelDisplay="auto"
-              />
-            </div>
+          <div style={{ flex: '0 1 auto' }}>
+            <BPMSlider onLongPress={() => this.handleBpmChange({}, [50, 250])} selectedBpm={selectedBpm} onBpmChange={(e, newValue) => this.handleBpmChange(e, newValue)} height={75} min={0} max={300} />
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-          {this.mapResults(results)}
+        <div style={{ marginTop: 5 }}>
+          Getting recommendations for {type.toLowerCase()}s <span style={{ color: 'red' }}>{query ? ("like " + (Array.isArray(query)?query.join(', ') : query)) : ''}</span>
+        </div>
+        <div style={{ padding: '20px 0', display: 'flex', justifyContent: 'center' }}>
+          <ResizableFlexbox childrenWidth={219}>
+            <Results data={results} />
+          </ResizableFlexbox>
         </div>
       </div>
     );
