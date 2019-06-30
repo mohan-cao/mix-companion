@@ -48,7 +48,7 @@ const GetCamelotWheelColorText = (displayKey) => {
 
 const ErrorDiv = () => {
   return (
-    <div style={{ margin: '0 auto', backgroundColor: 'black', width: '100%', height: '6em', color: 'white', boxSizing: 'content-box' }}>
+    <div style={{ margin: '0 auto', width: '100%', height: '6em', color: 'white', boxSizing: 'content-box' }}>
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <h1 style={{ fontSize: '2em', margin: 0 }}>No results</h1>
       </div>
