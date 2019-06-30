@@ -76,7 +76,7 @@ export async function getGenres(token) {
 export async function searchSpotify(token, searchTerm, type) {
   if (!searchTerm) return Promise.reject("No search terms provided")
   const endpoint = "https://api.spotify.com/v1/search?q=" + searchTerm + "&type=" + type
-  console.log(endpoint)
+  console.debug(endpoint)
   const resp = await fetchJSONWithOAuthToken(endpoint, token)
   const json = await resp.json()
   handleError(resp, json)
@@ -130,7 +130,7 @@ export async function getRecommendationsBasedOnAttributes(token, { genres, bpm=1
   .map(async k => {
     let modifiedEndpoint = callable_endpoint + "&min_key=" + CamelotKeyToIntegerAndMode[k][0] + "&max_key=" + CamelotKeyToIntegerAndMode[k][0]
     modifiedEndpoint += "&min_mode=" + CamelotKeyToIntegerAndMode[k][1] + "&max_mode=" + CamelotKeyToIntegerAndMode[k][1]
-    console.log(modifiedEndpoint)
+    console.debug(modifiedEndpoint)
     const resp = await fetchJSONWithOAuthToken(modifiedEndpoint, token);
     const json = await resp.json();
     handleError(resp, json);

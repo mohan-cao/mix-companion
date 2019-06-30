@@ -40,7 +40,6 @@ function compressSearchTerms({ selectedBpm, number, isMinor, type, query }) {
 }
 
 function decompressSearchTerms(base64) {
-  console.log(base64)
   try {
     const arr = JSON.parse(atob(base64))
     if ((!Array.isArray(arr[0]) && typeof arr[0] !== 'number')) return {}
@@ -60,7 +59,11 @@ function handleSpotifyCallback(access_token, expires_in, nonce) {
       window.opener.spotifyCallback(access_token, expires_in, nonce)
     } catch (e) {
       // we're in local development. don't do anything lol
+      this.setNewToken(access_token, expires_in);
     }
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -68,9 +71,9 @@ function handleLocationQueryChanges() {
   let queryParams = QueryString.parse(window.location.hash)
   if (!queryParams) return;
   let { access_token, expires_in, state } = queryParams;
-  handleSpotifyCallback(access_token, expires_in, state)
+  if (handleSpotifyCallback(access_token, expires_in, state)) {}
   // Handle tokens
-  if (access_token && expires_in) {
+  else if (access_token && expires_in) {
     let expiry = (new Date().getTime() + (parseInt(expires_in) * 1000 * 0.9))
     this.setNewToken(access_token, expiry) // always refresh a little earlier than needed (0.9*actual expiry time)
   } else {
@@ -167,11 +170,11 @@ class App extends React.Component {
       window.location.hash = QueryString.stringify(hashObj)
       this.setState({ results: x })
     })
-    // .catch((code) => {
-    //   // token expired
-    //   if (code === 401) this.getToken()
-    //   else this.setState({ error: ''+code })
-    // })
+    .catch((code) => {
+      // token expired
+      if (code === 401) this.getToken()
+      else this.setState({ error: ''+code })
+    })
   }
 
   handleBpmChange(e, newValue) {
