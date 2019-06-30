@@ -123,9 +123,10 @@ class App extends React.Component {
     if (window.localStorage.getItem("token") === token){
       return;
     } else {
+      const newExpiry = new Date().getTime() + expires;
       window.localStorage.setItem("token", token)
-      window.localStorage.setItem("expires", expires)
-      this.setState({ token: token, expires: new Date().getTime() + expires })
+      window.localStorage.setItem("expires", newExpiry)
+      this.setState({ token: token, expires: newExpiry })
     }
   }
 
