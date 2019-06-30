@@ -56,8 +56,17 @@ const ErrorDiv = () => {
   );
 }
 
-function createDivs(result_obj) {
+function createDivs(result_obj, onArtistClicked, onSongClicked) {
   if (!result_obj || !result_obj.tracks || result_obj.tracks.length < 1) return <div />;
+
+  const artistClickHandler = (artist) => (e) => {
+    if (onArtistClicked) { e.preventDefault(); onArtistClicked(artist); }
+  }
+
+  const songClickHandler = (track, artist) => (e) => {
+    if (onSongClicked) { e.preventDefault(); onSongClicked(track, artist); }
+  }
+
   return result_obj.tracks
          .sort((a, b) => b.popularity - a.popularity)
          .map((track) => (
@@ -68,13 +77,16 @@ function createDivs(result_obj) {
                     <h1 className="artist-name">
                       {track.artists.map((art, i) => (
                         <a className="artist-name" key={art.id + "" + i} href={art.external_urls.spotify}
-                          onClick={(e) => e.preventDefault()} target="_blank" rel="noreferrer noopener">
+                           onClick={artistClickHandler(art)}
+                           target="_blank" rel="noreferrer noopener">
                           {art.name}
                         </a>
                       )).reduce(spanJoiner, [])}
                     </h1>
                     <h2 className="song-name">
-                      <a className="song-name" href={track.external_urls.spotify} target="_blank" rel="noreferrer noopener">
+                      <a className="song-name" href={track.external_urls.spotify}
+                         onClick={songClickHandler(track, track.artists[0])}
+                         target="_blank" rel="noreferrer noopener">
                         {track.name}
                       </a>
                     </h2>
@@ -88,12 +100,12 @@ function createDivs(result_obj) {
          ));
 }
 
-export default function Results({ data, rowPadding }) {
+export default function Results({ data, rowPadding, onArtistClicked = null, onSongClicked = null }) {
   if (typeof data !== 'object') return <ErrorDiv />
   const reactObjects = Object.keys(data).reduce((accumulator, musicalKey) => {
     const themeCol = GetCamelotWheelColor(musicalKey);
     const themeTextCol = GetCamelotWheelColorText(musicalKey)
-    const elements = createDivs(data[musicalKey])
+    const elements = createDivs(data[musicalKey], onArtistClicked, onSongClicked)
     if (elements.length) {
       accumulator.push(<div key={musicalKey} className="key-row" style={{ backgroundColor: themeCol, color: themeTextCol, marginBottom: rowPadding }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>

@@ -91,7 +91,7 @@ function handleLocationQueryChanges() {
     const searchTerms = decompressSearchTerms(searchParam)
     if (Object.keys(searchTerms).length > 0) {
       console.log(searchTerms)
-      this.setState(searchTerms, () => this.startSearch())
+      this.setState(searchTerms, () => this.state.token && this.startSearch())
       window.location.hash += (window.location.hash ? "&search=" : "search=") + searchParam
     }
   }
@@ -125,7 +125,7 @@ class App extends React.Component {
     } else {
       window.localStorage.setItem("token", token)
       window.localStorage.setItem("expires", expires)
-      this.setState({ token: token, expires: expires })
+      this.setState({ token: token, expires: new Date().getTime() + expires })
     }
   }
 
@@ -183,6 +183,14 @@ class App extends React.Component {
     this.setState({ selectedBpm: newValue })
   }
 
+  handleSongClick(song, artist) {
+    this.setState({ type: "Track", query: song.name + " (" + artist.name + ")"})
+  }
+
+  handleArtistClick(artist) {
+    this.setState({ type: "Artist", query: artist.name })
+  }
+
   setSearchTerms({ query, type }) {
     if (type) {
       this.setState({ type, query: '' })
@@ -227,19 +235,32 @@ class App extends React.Component {
         </div>
         <div className="suggest-bar">
           Getting recommendations for <span style={{ color: '#AEA' }}>{type.toLowerCase()}s</span>
-          
-            {query ? (<span> like <span style={{ color: '#EAA' }}>{(Array.isArray(query) ? query.join(', ') : query)}</span></span>) : ''}
-          
-          
+            {query ? 
+              (<span> like&nbsp;
+                <span style={{ color: '#EAA' }}>
+                  {(Array.isArray(query) ?
+                    <span>{query.join(', ')}</span> :
+                    <span>
+                      { query.split(',')
+                             .reduce((a, b) => {
+                              if (a.length === 0) { a.push(<span>{b}</span>); return a; }
+                              a.push(<span style={{ color: 'white' }}>, and </span>, <span>{b}</span>);
+                              return a;
+                             }, [])
+                      }
+                    </span>
+                   )}
+                </span>
+              </span>) : ''
+            }
             {(Array.isArray(selectedBpm) && selectedBpm.length === 2 ? (<span> and only tracks that are <span style={{ color: '#AAE' }}>{selectedBpm[0]}</span> to <span style={{ color: '#AAE' }}>{selectedBpm[1]} bpm</span> </span>) :
               (typeof selectedBpm === 'number' ? (<span> for tracks with <span style={{ color: '#AAE' }}>{selectedBpm} (± 10) bpm</span> </span>) : '')
             )}
-          
         </div>
         <div style={{ padding: '20px 0', display: 'flex', justifyContent: 'center' }}>
           {(results ? 
             <ResizableFlexbox childrenWidth={210} style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
-              <Results data={results} rowPadding={0} />
+              <Results data={results} rowPadding={0} onSongClicked={(song, artist) => this.handleSongClick(song, artist)} onArtistClicked={(artist) => this.handleArtistClick(artist)} />
             </ResizableFlexbox>
             :
             <div />
