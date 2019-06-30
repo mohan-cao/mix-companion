@@ -39,7 +39,7 @@ async function fetchJSONWithOAuthToken(endpoint, token) {
       "Content-Type": "application/json",
       "Authorization": "Bearer " + token
     }
-  })
+  }).catch(x => { throw new FetchException("Either your internet connection sucks, or Spotify's API is down.."); })
   return resp;
 }
 

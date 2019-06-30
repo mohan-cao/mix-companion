@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/mix-companion/static/css/main.6dc68551.chunk.css",
-    "main.js": "/mix-companion/static/js/main.fe7b38b8.chunk.js",
-    "main.js.map": "/mix-companion/static/js/main.fe7b38b8.chunk.js.map",
+    "main.css": "/mix-companion/static/css/main.c4c04f36.chunk.css",
+    "main.js": "/mix-companion/static/js/main.770edc50.chunk.js",
+    "main.js.map": "/mix-companion/static/js/main.770edc50.chunk.js.map",
     "runtime~main.js": "/mix-companion/static/js/runtime~main.5d2f421f.js",
     "runtime~main.js.map": "/mix-companion/static/js/runtime~main.5d2f421f.js.map",
-    "static/js/2.18b68a87.chunk.js": "/mix-companion/static/js/2.18b68a87.chunk.js",
-    "static/js/2.18b68a87.chunk.js.map": "/mix-companion/static/js/2.18b68a87.chunk.js.map",
+    "static/js/2.6b3980d5.chunk.js": "/mix-companion/static/js/2.6b3980d5.chunk.js",
+    "static/js/2.6b3980d5.chunk.js.map": "/mix-companion/static/js/2.6b3980d5.chunk.js.map",
     "index.html": "/mix-companion/index.html",
-    "precache-manifest.7eaa51c52029ed31b34a1a66c4d27da1.js": "/mix-companion/precache-manifest.7eaa51c52029ed31b34a1a66c4d27da1.js",
+    "precache-manifest.ca960ba3bcd3e0ab4766671637fd3c3e.js": "/mix-companion/precache-manifest.ca960ba3bcd3e0ab4766671637fd3c3e.js",
     "service-worker.js": "/mix-companion/service-worker.js",
-    "static/css/main.6dc68551.chunk.css.map": "/mix-companion/static/css/main.6dc68551.chunk.css.map"
+    "static/css/main.c4c04f36.chunk.css.map": "/mix-companion/static/css/main.c4c04f36.chunk.css.map"
   }
 }

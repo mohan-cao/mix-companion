@@ -10,6 +10,8 @@ import SearchBar from './SearchBar';
 import ResizableFlexbox from './ResizableFlexbox';
 import Results from './Results';
 import ErrorSnackbar from './ErrorSnackbar';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faSpotify } from '@fortawesome/free-brands-svg-icons'
 
 const formatKey = (number, isMinor) => number + (isMinor ? "B" : "A")
 const stringToKey = (str) => [ parseInt(str.slice(0, -1)), (str.slice(-1).toLowerCase() === "b" ? true : false)]
@@ -33,18 +35,76 @@ const rotateNumber = (a, b) => (prev, amount) => {
 
 const rotate12 = rotateNumber(1, 12)
 
+function compressSearchTerms({ selectedBpm, number, isMinor, type, query }) {
+  return btoa(JSON.stringify([ selectedBpm, number, isMinor, type, query ]))
+}
+
+function decompressSearchTerms(base64) {
+  console.log(base64)
+  try {
+    const arr = JSON.parse(atob(base64))
+    if ((!Array.isArray(arr[0]) && typeof arr[0] !== 'number')) return {}
+    if (typeof arr[1] !== 'number' || arr[1] < 1 || arr[1] > 12) return {}
+    if ((!Array.isArray(arr[3]) && typeof arr[3] !== 'string')) return {}
+    if (!Array.isArray(arr[4]) && typeof arr[4] !== 'string') return {}
+    return { selectedBpm: arr[0], number: parseInt(arr[1]), isMinor: !!arr[2], type: arr[3], query: arr[4] }
+  } catch (e) {
+    console.error(e)
+    return {}
+  }
+}
+
+function handleSpotifyCallback(access_token, expires_in, nonce) {
+  if (window.opener && window.opener.spotifyCallback) {
+    try {
+      window.opener.spotifyCallback(access_token, expires_in, nonce)
+    } catch (e) {
+      // we're in local development. don't do anything lol
+    }
+  }
+}
+
+function handleLocationQueryChanges() {
+  let queryParams = QueryString.parse(window.location.hash)
+  if (!queryParams) return;
+  let { access_token, expires_in, state } = queryParams;
+  handleSpotifyCallback(access_token, expires_in, state)
+  // Handle tokens
+  if (access_token && expires_in) {
+    let expiry = (new Date().getTime() + (parseInt(expires_in) * 1000 * 0.9))
+    this.setNewToken(access_token, expiry) // always refresh a little earlier than needed (0.9*actual expiry time)
+  } else {
+    const token = window.localStorage.getItem("token")
+    const expires = window.localStorage.getItem("expires")
+    if (new Date().getTime() < parseInt(expires)) {
+      this.setState({ token, expires })
+    }
+  }
+  window.history.replaceState(null, null, ' ');
+
+  // Handle bookmarked searches and history
+  const searchParam = queryParams["search"]
+  if (searchParam) {
+    const searchTerms = decompressSearchTerms(searchParam)
+    if (Object.keys(searchTerms).length > 0) {
+      console.log(searchTerms)
+      this.setState(searchTerms, () => this.startSearch())
+      window.location.hash += (window.location.hash ? "&search=" : "search=") + searchParam
+    }
+  }
+}
+
 class App extends React.Component {
   constructor() {
     super()
     this.state = {
       number: DEFAULT_KEY_NUM,
       isMinor: DEFAULT_KEY_IS_MINOR,
-      token: window.localStorage.getItem("token"),
-      expires: window.localStorage.getItem("expires"),
+      token: null,
+      expires: 0,
       availableGenres: ['country', 'classical', 'rock', 'pop', 'blues', 'r-n-b'],
-      results: 'Results go here',
+      results: null,
       selectedBpm: DEFAULT_TEMPO,
-
       type: "Track",
       query: "",
     }
@@ -52,18 +112,7 @@ class App extends React.Component {
 
   componentDidMount() {
     /// block start
-    {
-      let queryParams = QueryString.parse(window.location.hash)
-      if (!queryParams) return;
-      let { access_token, expires_in, state } = queryParams;
-      if (window.opener && window.opener.spotifyCallback) {
-        window.opener.spotifyCallback(access_token, expires_in, state)
-      } else if (access_token && expires_in) {
-        let expiry = (new Date().getTime() + (parseInt(expires_in) * 1000 * 0.9))
-        this.setNewToken(access_token, expiry) // always refresh a little earlier than needed (0.9*actual expiry time)
-      }
-      window.history.replaceState(null, null, ' ');
-    }
+    handleLocationQueryChanges.bind(this)()
     /// block end
   }
 
@@ -112,12 +161,17 @@ class App extends React.Component {
       songs: (type === 'Track' ? query.split(',').map(x => x.trim()) : null),
       artist: (type === 'Artist' ? query.split(',').map(x => x.trim()) : null),
     })
-    .then(x => this.setState({ results: x }))
-    .catch((code) => {
-      // token expired
-      if (code === 401) this.getToken()
-      else this.setState({ error: ''+code })
+    .then(x => {
+      const hashObj = QueryString.parse(window.location.hash)
+      hashObj["search"] = compressSearchTerms({ selectedBpm, number, isMinor, type, query })
+      window.location.hash = QueryString.stringify(hashObj)
+      this.setState({ results: x })
     })
+    // .catch((code) => {
+    //   // token expired
+    //   if (code === 401) this.getToken()
+    //   else this.setState({ error: ''+code })
+    // })
   }
 
   handleBpmChange(e, newValue) {
@@ -136,11 +190,15 @@ class App extends React.Component {
 
   render() {
     const { number, isMinor, token, results, availableGenres, selectedBpm, type, query, error } = this.state;
-    if (!token) return <div className="App" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Button onClick={() => this.getToken()}>Login to Spotify to use this app</Button></div>
+    if (!token) return (
+      <div className="App" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Button variant="outlined" onClick={() => this.getToken()} className="loginBtn"><FontAwesomeIcon icon={faSpotify} style={{ marginRight: 5 }} />Login to Spotify to use this app</Button>
+      </div>
+    )
     return (
       <div className="App">
         <ErrorSnackbar open={!!error} error={error} onClose={() => this.setState({ error: null })} />
-        <div style={{ backgroundColor: '#eee', padding: 15, boxSizing: 'border-box', display: 'inline-flex', width: '100vw', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div className="search">
           <div style={{ display: 'flex', flexDirection: 'column', width: '70%', flex: '1 1 auto', overflow: 'auto' }}>
             <div style={{ display: 'flex' }}>
               <KeySelector style={{ flexDirection: 'row', flex: '0 0 auto', alignItems: 'center' }} camelotKey={formatKey(number, isMinor)} onChange={(e) => this.setKey(e)} />
@@ -164,19 +222,25 @@ class App extends React.Component {
             <BPMSlider onLongPress={() => ('ontouchstart' in document.documentElement) && this.handleBpmChange({}, [50, 250])} selectedBpm={selectedBpm} onBpmChange={(e, newValue) => this.handleBpmChange(e, newValue)} height={75} min={0} max={300} />
           </div>
         </div>
-        <div style={{ marginTop: 5 }}>
-          Getting recommendations for <span style={{ }}>{type.toLowerCase()}s</span>
-          <span style={{ color: 'red' }}>
-            {query ? (" like " + (Array.isArray(query) ? query.join(', ') : query)) : ''}
-            {(Array.isArray(selectedBpm) && selectedBpm.length === 2 ? ` and only tracks that are ${selectedBpm[0]} to ${selectedBpm[1]} bpm` :
-             (typeof selectedBpm === 'number' ? ` for tracks with ${selectedBpm} (± 10) bpm ` : '')
+        <div className="suggest-bar">
+          Getting recommendations for <span style={{ color: '#AEA' }}>{type.toLowerCase()}s</span>
+          
+            {query ? (<span> like <span style={{ color: '#EAA' }}>{(Array.isArray(query) ? query.join(', ') : query)}</span></span>) : ''}
+          
+          
+            {(Array.isArray(selectedBpm) && selectedBpm.length === 2 ? (<span> and only tracks that are <span style={{ color: '#AAE' }}>{selectedBpm[0]}</span> to <span style={{ color: '#AAE' }}>{selectedBpm[1]} bpm</span> </span>) :
+              (typeof selectedBpm === 'number' ? (<span> for tracks with <span style={{ color: '#AAE' }}>{selectedBpm} (± 10) bpm</span> </span>) : '')
             )}
-          </span>
+          
         </div>
         <div style={{ padding: '20px 0', display: 'flex', justifyContent: 'center' }}>
-          <ResizableFlexbox childrenWidth={219}>
-            <Results data={results} />
-          </ResizableFlexbox>
+          {(results ? 
+            <ResizableFlexbox childrenWidth={210} style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
+              <Results data={results} rowPadding={0} />
+            </ResizableFlexbox>
+            :
+            <div />
+          )}
         </div>
       </div>
     );

@@ -2,10 +2,10 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { FormControl, TextField, Select, MenuItem, InputLabel } from '@material-ui/core';
 
-const placeholders = {
-  "Track": "Never Gonna Give You Up, Robot Rock",
-  "Artist": "Kanye West",
-  "Genre": "Pop, Rock, Country"
+const supportedValues = {
+  "Track": "Never Gonna Give You Up, Robot Rock, Bad (Michael Jackson)",
+  "Artist": "Kanye West, Jimi Hendrix",
+  "Genre": "Pop, Rock, Country",
 }
 
 export default class SearchBar extends React.PureComponent {
@@ -30,7 +30,7 @@ export default class SearchBar extends React.PureComponent {
             value={value}
             onChange={(e) => onChange({ query: e.target.value })}
             style={flexSizing}
-            placeholder={placeholders[type]}
+            placeholder={supportedValues[type]}
             InputLabelProps={{ shrink: true, disableAnimation: false }}
             label="Search"
           />
@@ -45,5 +45,5 @@ SearchBar.defaultProps = {
 }
 
 SearchBar.propTypes = {
-  type: PropTypes.oneOf(["Track", "Artist", "Genre"])
+  type: PropTypes.oneOf(Object.keys(supportedValues))
 }
