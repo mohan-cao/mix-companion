@@ -18,7 +18,6 @@ const stringToKey = (str) => [ parseInt(str.slice(0, -1)), (str.slice(-1).toLowe
 const DEFAULT_TEMPO = 120
 const DEFAULT_KEY_NUM = 1
 const DEFAULT_KEY_IS_MINOR = false
-const website = "https://www.mohancao.me/mix-companion"
 
 export const spanJoiner = (a, b) => {
   if (a.length === 0) a.push(b)
@@ -131,7 +130,7 @@ class App extends React.Component {
   }
 
   getToken() {
-    getTokenInNewWindow("4a4e5068f705407480266c7e7c8d7dfa", website).then(({ token, expires }) => {
+    getTokenInNewWindow("4a4e5068f705407480266c7e7c8d7dfa", window.location.href).then(({ token, expires }) => {
       this.setNewToken(token, expires)
     })
   }
